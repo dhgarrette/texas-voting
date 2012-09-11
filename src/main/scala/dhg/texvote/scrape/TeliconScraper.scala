@@ -6,6 +6,8 @@ import opennlp.scalabha.util.CollectionUtil._
 import opennlp.scalabha.util.CollectionUtils._
 import opennlp.scalabha.util.FileUtils._
 import java.io.File
+import org.apache.log4j.Logger
+import org.apache.log4j.Level
 
 /**
  * www.telicon.com
@@ -13,13 +15,16 @@ import java.io.File
 object TeliconScraper {
 
   def main(args: Array[String]) {
-
+    
     val (username, password) =
       args.toSeq match {
         case Seq(username, password) => (username, password)
       }
+    
+    Logger.getRootLogger.setLevel(Level.INFO)
 
     val webClient: WebClient = new WebClient()
+    webClient.setJavaScriptEnabled(false)
 
     // Get the first page
     val page1: HtmlPage = webClient.getPage("http://www.telicon.com/www/tx/index.htm")
