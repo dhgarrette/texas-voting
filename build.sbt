@@ -8,7 +8,8 @@ resolvers ++= Seq(
   "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots")
 
 
-libraryDependencies ++= Seq()
+libraryDependencies ++= Seq(
+  "net.sourceforge.htmlunit" % "htmlunit" % "2.10")
 
 mainClass in (Compile, run) := None
 
