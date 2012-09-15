@@ -65,7 +65,7 @@ object TeliconCsvPrep {
         }
       }
 
-    data.flatten.map(_._3).groupBy(n => getLastName(n)).mapVals(_.toSet).toVector.sortBy(_._1).filter { case (k, vs) => vs.size > 1 } foreach println
+    //data.flatten.map(_._3).groupBy(n => getLastName(n)).mapVals(_.toSet).toVector.sortBy(_._1).filter { case (k, vs) => vs.size > 1 } foreach println
 
     val byName = data.flatten
       .groupBy(_._3)
@@ -77,10 +77,10 @@ object TeliconCsvPrep {
         (sessionsByMemnum, info, votes)
       }
 
-    val BillNameSortCriteriaRe = """(.{3}) - (.{2}.?) (\d+)\t.* - (.+) (.*)\t.*""".r
+    val BillNameSortCriteriaRe = """(.{3}) - (.{2}.?) (\d+)\t.* - (.+)\t.*""".r
     val voteNames = byName.flatMap(_._2._3.keys).toSet.toVector.sortBy {
-      case BillNameSortCriteriaRe(session, billType, billNum, motionType, motionId) =>
-        (session, billType, billNum.toInt, motionType, motionId)
+      case BillNameSortCriteriaRe(session, billType, billNum, motionId) =>
+        (session, billType, billNum.toInt, motionId)
     }
     //FileUtils.writeUsing("data/allVoteNames.txt") { f => voteNames.foreach(s => f.write(s + "\n")) }
 
@@ -98,7 +98,7 @@ object TeliconCsvPrep {
   }
 
   def getLegislatorPage(memnum: String, session: String) = {
-    val page = readLines(legislatorDir + "%03d_%s.txt".format(memnum.toInt, session)).map(_.trim).toVector
+    val page = readLines(legislatorDir + "%03d_%s.txt".format(memnum.toInt, session), "latin1").map(_.trim).toVector
 
     val x1 =
       if (memnum.toInt == 41 && session == "74R" && page(3) == "41") {
