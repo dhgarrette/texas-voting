@@ -80,21 +80,28 @@ object TeliconCsvPrep {
     val BillNameSortCriteriaRe = """(.{3}) - (.{2}.?) (\d+)\t.* - (.+)\t.*""".r
     val voteNames = byName.flatMap(_._2._3.keys).toSet.toVector.sortBy {
       case BillNameSortCriteriaRe(session, billType, billNum, motionId) =>
-        (session, billType, billNum.toInt, motionId)
+        (session.replace('R', '0'), billType, billNum.toInt, motionId)
     }
     //FileUtils.writeUsing("data/allVoteNames.txt") { f => voteNames.foreach(s => f.write(s + "\n")) }
 
-    val infoItems = Vector("party", "chamber", "dob", "degrees", "church")
-    FileUtils.using(new CSVWriter(new BufferedWriter(new FileWriter("data/clean/voting_data.csv")))) { f =>
-      f.writeNext((("name" +: "member numbers and sessions"  +: infoItems) ++ voteNames).toArray)
-      for ((name, (sessionsByMemnum, info, votes)) <- byName.toVector.sortBy(n => (getLastName(n._1), n._1))) {
-        val sessions = sessionsByMemnum.map{case (k,v) => "%s -> [%s]".format(k,v.toVector.sorted.mkString(",")) }.mkString(", ")
-        val items = infoItems.map(item => info(item).toVector.sorted.map(_.getOrElse("-None-")).mkString("; "))
-        val voteItems = voteNames.map(votes.getOrElse(_, ""))
-        f.writeNext(((name +: sessions +: items) ++ voteItems).toArray)
+    //val groupedSessions = List(("allSessions", allSessions)) // all sessions in one CSV
+    //val groupedSessions = allSessions.groupBy(_.take(2)) // each session, by first two digits, in its own CSV
+    val groupedSessions = allSessions.groupBy(identity) // each session ID in its own CSV
+
+    for ((sessionGroupSuffix, sessionGroup) <- groupedSessions) {
+      val usedVoteNames = voteNames.filter(voteName => sessionGroup.exists(voteName.startsWith))
+
+      val infoItems = Vector("party", "chamber", "dob", "degrees", "church")
+      FileUtils.using(new CSVWriter(new BufferedWriter(new FileWriter("data/clean/voting_data-%s.csv".format(sessionGroupSuffix))))) { f =>
+        f.writeNext((("name" +: "member numbers and sessions" +: infoItems) ++ usedVoteNames).toArray)
+        for ((name, (sessionsByMemnum, info, votes)) <- byName.toVector.sortBy(n => (getLastName(n._1), n._1))) {
+          val sessions = sessionsByMemnum.map { case (k, v) => "%s -> [%s]".format(k, v.toVector.sorted.mkString(",")) }.mkString(", ")
+          val items = infoItems.map(item => info(item).toVector.sorted.map(_.getOrElse("-None-")).mkString("; "))
+          val voteItems = usedVoteNames.map(votes.getOrElse(_, ""))
+          f.writeNext(((name +: sessions +: items) ++ voteItems).toArray)
+        }
       }
     }
-
   }
 
   def getLegislatorPage(memnum: String, session: String) = {
