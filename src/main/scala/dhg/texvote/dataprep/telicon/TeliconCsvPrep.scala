@@ -10,6 +10,7 @@ import java.io.BufferedWriter
 import java.io.FileWriter
 import dhg.texvote.dataprep.telicon.TeliconDataprepHelper._
 import dhg.texvote.dataprep.telicon.TeliconVotesPagePrep._
+import dhg.texvote.dataprep.telicon.TeliconConstituentPagesPrep._
 
 object TeliconCsvPrep {
 
@@ -33,7 +34,7 @@ object TeliconCsvPrep {
     { val (checkMemnums, checkSessions) = getMemnumSessions(EduEmployDir, "xml"); assert(allMemnums.toSet == checkMemnums.toSet); assert(Set("82R") == checkSessions.toSet) }
     { val (checkMemnums, checkSessions) = getMemnumSessions(IncomeHousingDir, "xml"); assert(allMemnums.toSet == checkMemnums.toSet); assert(Set("82R") == checkSessions.toSet) }
 
-    val legislatorsAndVotesBySession =
+    val pageInfoBySession =
       for (
         memnum <- allMemnums;
         session <- allSessions;
@@ -44,15 +45,16 @@ object TeliconCsvPrep {
     //data.flatten.map(_._3).groupBy(n => getLastName(n)).mapVals(_.toSet).toVector.sortBy(_._1).filter { case (k, vs) => vs.size > 1 } foreach println
 
     val legislators =
-      legislatorsAndVotesBySession
-        .groupBy(_._1.name)
+      pageInfoBySession
+        .groupBy(_._1.name) // group by the legislator name
         .map {
           case (name, entriesUnderSameName) =>
             val allLegInfo = entriesUnderSameName.map(_._1.features)
             val sessionsByMemnum = entriesUnderSameName.map(_._1).map(leg => (leg.memnum, leg.session)).groupByKey
             val info = allLegInfo.flatMap(_.keys).mapTo(k => allLegInfo.map(_(k))).toMap
             val votes = entriesUnderSameName.map(_._2).flatten.toMap
-            LegislatorInfo(name, sessionsByMemnum, info, votes)
+            val constituentPage = getConstitutentPages(mostRecentMemnum(sessionsByMemnum))
+            LegislatorInfo(name, sessionsByMemnum, info, votes, constituentPage)
         }
 
     //val BillNameSortCriteriaRe = """(.{3}) - (.{2}.?) (\d+)\t.* - (.+)\t.*""".r
@@ -74,13 +76,21 @@ object TeliconCsvPrep {
       val usedVoteNames = voteNames.filter(voteName => sessionGroup.exists(voteName.session.startsWith))
 
       val infoItems = Vector("party", "chamber", "dob", "degrees", "church")
+      val constituentItems = Vector(
+        "pctForeignBorn",
+        "pctNoncitizen",
+        "pctRural",
+        "pctSingleParentFamilies",
+        "pctBachelorsDegree",
+        "pctLivingInPoverty")
       FileUtils.using(new CSVWriter(new BufferedWriter(new FileWriter("data/clean/voting_data-%s.csv".format(sessionGroupSuffix))))) { f =>
-        f.writeNext((("name" +: "member numbers and sessions" +: infoItems) ++ usedVoteNames.map(_.toString)).toArray)
-        for (LegislatorInfo(name, sessionsByMemnum, info, votes) <- legislators.toVector.sortBy(leg => (leg.lastName, leg.name))) {
+        f.writeNext((("name" +: "member numbers and sessions" +: infoItems) ++ constituentItems ++ usedVoteNames.map(_.toString)).toArray)
+        for (LegislatorInfo(name, sessionsByMemnum, info, votes, constituentInfo) <- legislators.toVector.sortBy(leg => (leg.lastName, leg.name))) {
           val sessions = sessionsByMemnum.map { case (k, v) => "%s -> [%s]".format(k, v.toVector.sorted.mkString(",")) }.mkString(", ")
-          val items = infoItems.map(item => info(item).toVector.sorted.map(_.getOrElse("-None-")).mkString("; "))
+          val infoData = infoItems.map(item => info(item).toVector.sorted.map(_.getOrElse("-None-")).mkString("; "))
+          val constituentData = constituentItems.map(constituentInfo)
           val voteItems = usedVoteNames.map(votes.getOrElse(_, ""))
-          f.writeNext(((name +: sessions +: items) ++ voteItems).toArray)
+          f.writeNext(((name +: sessions +: infoData) ++ constituentData ++ voteItems).toArray)
         }
       }
     }
@@ -90,7 +100,8 @@ object TeliconCsvPrep {
     name: String,
     sessionsByMemnum: Map[String, Set[String]],
     info: Map[String, Set[Option[String]]],
-    votes: Map[VoteName, String]) {
+    votes: Map[VoteName, String],
+    constituentInfo: Map[String, String]) {
 
     def lastName = {
       val x0 = if (name.endsWith(".")) name.dropRight(1) else name
@@ -99,6 +110,11 @@ object TeliconCsvPrep {
       val x3 = if (x2.endsWith(",")) x2.dropRight(1) else x2
       x3.split(" ").last
     }
+  }
+
+  def mostRecentMemnum(sessionsByMemnum: Map[String, Set[String]]) = {
+    val ungrouped = sessionsByMemnum.ungroup
+    ungrouped.maxBy { case (memnum, session) => session }._1
   }
 
 }
