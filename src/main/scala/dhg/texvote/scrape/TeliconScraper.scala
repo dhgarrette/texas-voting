@@ -8,6 +8,15 @@ import opennlp.scalabha.util.FileUtils._
 import java.io.File
 import org.apache.log4j.Logger
 import org.apache.log4j.Level
+import com.gargoylesoftware.htmlunit.attachment.Attachment
+import com.gargoylesoftware.htmlunit.attachment.CollectingAttachmentHandler
+import scala.collection.JavaConverters._
+import com.gargoylesoftware.htmlunit.Page
+import com.gargoylesoftware.htmlunit.UnexpectedPage
+import java.io.FileOutputStream
+import org.apache.pdfbox.util.PDFTextStripper
+import org.apache.pdfbox.pdmodel.PDDocument
+import java.io.InputStream
 
 /**
  * www.telicon.com
@@ -55,6 +64,7 @@ object TeliconScraper {
     val PopulationDir = "data/scraped/population_pages/"
     val EduEmployDir = "data/scraped/edu_employ_pages/"
     val IncomeHousingDir = "data/scraped/income_housing_pages/"
+    val RaceDemoDir = "data/scraped/race_demo_pages/"
 
     makeDir("data")
     makeDir("data/scraped")
@@ -63,6 +73,7 @@ object TeliconScraper {
     makeDir(PopulationDir)
     makeDir(EduEmployDir)
     makeDir(IncomeHousingDir)
+    makeDir(RaceDemoDir)
 
     val anonClient = anon()
 
@@ -87,6 +98,22 @@ object TeliconScraper {
             writeUsing(PopulationDir + "%03d_%s.xml".format(memnum, session))(_.write(populationPage.asXml))
             writeUsing(EduEmployDir + "%03d_%s.xml".format(memnum, session))(_.write(eduEmployPage.asXml))
             writeUsing(IncomeHousingDir + "%03d_%s.xml".format(memnum, session))(_.write(incomeHousingPage.asXml))
+          }
+
+          if (session == "82R") { // the only session working now
+            (4 to 4).foreach { page =>
+              val (chamber, dist) = if (memnum <= 150) ("house", memnum) else ("senate", memnum - 150)
+              val url = "http://www.fyi.legis.state.tx.us/fyiwebdocs/PDF/%s/dist%s/r%s.pdf".format(chamber, dist, page)
+              val p: UnexpectedPage = anonClient.getPage(url)
+              val doc = PDDocument.load(p.getWebResponse().getContentAsStream())
+              try {
+                val stripper = new PDFTextStripper()
+                writeUsing(RaceDemoDir + "%03d_%s.txt".format(memnum, session)) { w => stripper.writeText(doc, w) }
+              }
+              finally {
+                doc.close()
+              }
+            }
           }
         }
       }
