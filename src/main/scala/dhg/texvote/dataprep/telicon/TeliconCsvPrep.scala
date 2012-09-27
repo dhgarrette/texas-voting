@@ -26,45 +26,51 @@ object TeliconCsvPrep {
     { val (checkMemnums, checkSessions) = getMemnumSessions(EduEmployDir, "xml"); assert(allMemnums.toSet == checkMemnums.toSet); assert(Set("82R") == checkSessions.toSet) }
     { val (checkMemnums, checkSessions) = getMemnumSessions(IncomeHousingDir, "xml"); assert(allMemnums.toSet == checkMemnums.toSet); assert(Set("82R") == checkSessions.toSet) }
 
-    val pageInfoBySession =
-      for (
-        memnum <- allMemnums;
-        session <- allSessions;
-        legPage <- TeliconLegislatorPagePrep.getLegislatorPage(memnum, session);
-        votes = TeliconVotesPagePrep.getVotesPage(memnum, session)
-      ) yield { (legPage, votes) }
-
-    //data.flatten.map(_._3).groupBy(n => getLastName(n)).mapVals(_.toSet).toVector.sortBy(_._1).filter { case (k, vs) => vs.size > 1 } foreach println
-
-    val legislators =
-      pageInfoBySession
-        .groupBy(_._1.name) // group by the legislator name
-        .map {
-          case (name, entriesUnderSameName) =>
-            val allLegInfo = entriesUnderSameName.map(_._1.features)
-            val sessionsByMemnum = entriesUnderSameName.map(_._1).map(leg => (leg.memnum, leg.session)).groupByKey
-            val info = allLegInfo.flatMap(_.keys).mapTo(k => allLegInfo.map(_(k))).toMap
-            val votes = entriesUnderSameName.map(_._2).flatten.toMap
-            val constituentPage = getConstitutentPages(mostRecentMemnum(sessionsByMemnum))
-            LegislatorInfo(name, sessionsByMemnum, info, votes, constituentPage)
-        }
-
-    //val BillNameSortCriteriaRe = """(.{3}) - (.{2}.?) (\d+)\t.* - (.+)\t.*""".r
-    //BillNameSortCriteriaRe(session, billType, billNum, motionId)
-    val BillRe = """(.{2}.?) (\d+)\t.*""".r
-    val MotionRe = """(.+)\t.*""".r
-    val voteNames =
-      legislators.flatMap(_.votes.map(_._1)).toSet.toVector.sortBy {
-        case VoteName(session, BillRe(billType, billNum), MotionRe(motionId)) =>
-          (session.replace('R', '0'), billType, billNum.toInt, motionId)
-      }
-    FileUtils.writeUsing("data/allVoteNames.txt") { f => voteNames.foreach(s => f.write(s + "\n")) }
-
     //val groupedSessions = List(("allSessions", allSessions)) // all sessions in one CSV
-    //val groupedSessions = allSessions.groupBy(_.take(2)) // each session, by first two digits, in its own CSV
-    val groupedSessions = allSessions.groupBy(identity) // each session ID in its own CSV
+    val groupedSessions = allSessions.groupBy(_.take(2)) // each session, by first two digits, in its own CSV
+    //val groupedSessions = allSessions.groupBy(identity) // each session ID in its own CSV
 
     for ((sessionGroupSuffix, sessionGroup) <- groupedSessions) {
+
+      val pageInfoBySession =
+        for (
+          memnum <- allMemnums;
+          session <- sessionGroup;
+          legPage <- TeliconLegislatorPagePrep.getLegislatorPage(memnum, session);
+          votes = TeliconVotesPagePrep.getVotesPage(memnum, session)
+        ) yield { (legPage, votes) }
+
+      //data.flatten.map(_._3).groupBy(n => getLastName(n)).mapVals(_.toSet).toVector.sortBy(_._1).filter { case (k, vs) => vs.size > 1 } foreach println
+
+      val legislators =
+        pageInfoBySession
+          .groupBy(_._1.name) // group by the legislator name
+          .map {
+            case (name, entriesUnderSameName) =>
+              val allLegInfo = entriesUnderSameName.map(_._1.features)
+
+              val sessionsByMemnum = entriesUnderSameName.map(_._1).map(leg => (leg.memnum, leg.session)).groupByKey
+              if (sessionsByMemnum.size > 1) println("%s %s".format(name, sessionsByMemnum))
+
+              val info = allLegInfo.flatMap(_.keys).mapTo(k => allLegInfo.map(_(k))).toMap
+              val votes = entriesUnderSameName.map(_._2).flatten.toMap
+
+              val (earliestMemnum, earliestSession) = earliestMemnumAndSession(sessionsByMemnum)
+              val constituentPage = getConstitutentPages(earliestMemnum, earliestSession)
+              LegislatorInfo(name, sessionsByMemnum, info, votes, constituentPage)
+          }
+
+      //val BillNameSortCriteriaRe = """(.{3}) - (.{2}.?) (\d+)\t.* - (.+)\t.*""".r
+      //BillNameSortCriteriaRe(session, billType, billNum, motionId)
+      val BillRe = """(.{2}.?) (\d+)\t.*""".r
+      val MotionRe = """(.+)\t.*""".r
+      val voteNames =
+        legislators.flatMap(_.votes.map(_._1)).toSet.toVector.sortBy {
+          case VoteName(session, BillRe(billType, billNum), MotionRe(motionId)) =>
+            (session.replace('R', '0'), billType, billNum.toInt, motionId)
+        }
+      FileUtils.writeUsing("data/allVoteNames.txt") { f => voteNames.foreach(s => f.write(s + "\n")) }
+
       val usedVoteNames = voteNames.filter(voteName => sessionGroup.exists(voteName.session.startsWith))
 
       val infoItems = Vector("party", "chamber", "dob", "degrees", "church")
@@ -105,9 +111,12 @@ object TeliconCsvPrep {
     }
   }
 
-  def mostRecentMemnum(sessionsByMemnum: Map[String, Set[String]]) = {
+  def earliestMemnumAndSession(sessionsByMemnum: Map[String, Set[String]]) = {
     val ungrouped = sessionsByMemnum.ungroup
-    ungrouped.maxBy { case (memnum, session) => session }._1
+    val (earliestMemnum, earliestSession) = ungrouped
+      .mapVals(_.replace('R', '0'))
+      .minBy { case (memnum, session) => session }
+    (earliestMemnum, earliestSession)
   }
 
 }

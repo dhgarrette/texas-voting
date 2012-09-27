@@ -41,9 +41,11 @@ object TeliconConstituentPagesPrep {
       }
   }
 
-  def getConstitutentPages(memnum: String): Map[String, String] = {
+  def getConstitutentPages(memnum: String, session: String): Map[String, String] = {
     val session = "82R"
 
+    val xmlColumn = if(session.take(2).toInt >= 78) 1 else 4
+      
     val populationPage = readLines(PopulationDir + "%03d_%s.xml".format(memnum.toInt, session), "latin1").toVector
     val Some(pctForeignBorn) = findInfo("FOREIGN BORN", populationPage, 1)
     val Some(pctNoncitizen) = findInfo("NONCITIZEN", populationPage, 1)
