@@ -166,12 +166,6 @@ object TeliconScraper {
     webClient
   }
 
-  def makeDir(dirname: String) {
-    val d = new File(dirname)
-    if (!d.exists)
-      d.mkdir
-  }
-
   class Pipeable[T](self: T) { def |>[R](block: T => R): R = block(self) }
   implicit def pipeable[T](self: T): Pipeable[T] = new Pipeable(self)
 }

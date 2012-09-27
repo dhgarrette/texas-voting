@@ -210,4 +210,10 @@ object TeliconDataprepHelper {
     }
   }
 
+  def makeDir(dirname: String) {
+    val d = new File(dirname)
+    if (!d.exists)
+      d.mkdir
+  }
+
 }

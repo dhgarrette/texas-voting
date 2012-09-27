@@ -26,12 +26,17 @@ object TeliconCsvPrep {
     { val (checkMemnums, checkSessions) = getMemnumSessions(EduEmployDir, "xml"); assert(allMemnums.toSet == checkMemnums.toSet); assert(Set("82R") == checkSessions.toSet) }
     { val (checkMemnums, checkSessions) = getMemnumSessions(IncomeHousingDir, "xml"); assert(allMemnums.toSet == checkMemnums.toSet); assert(Set("82R") == checkSessions.toSet) }
 
-    //val groupedSessions = List(("allSessions", allSessions)) // all sessions in one CSV
-    val groupedSessions = allSessions.groupBy(_.take(2)) // each session, by first two digits, in its own CSV
-    //val groupedSessions = allSessions.groupBy(identity) // each session ID in its own CSV
+    val options = args.grouped(2).map(_.toTuple2).toMap
+    val (outputDir, groupedSessions) = options.getOrElse("-g", "session") match {
+      case "all" => ("voting_data_all_sessions", List(("allSessions", allSessions))) // all sessions in one CSV
+      case "session" => ("voting_data_by_session", allSessions.groupBy(_.take(2))) // each session, by first two digits, in its own CSV
+      case "subsession" => ("voting_data_by_subsession", allSessions.groupBy(identity)) // each session ID in its own CSV
+    }
+
+    makeDir("data/clean")
+    makeDir("data/clean/%s".format(outputDir))
 
     for ((sessionGroupSuffix, sessionGroup) <- groupedSessions) {
-
       val pageInfoBySession =
         for (
           memnum <- allMemnums;
@@ -69,7 +74,7 @@ object TeliconCsvPrep {
           case VoteName(session, BillRe(billType, billNum), MotionRe(motionId)) =>
             (session.replace('R', '0'), billType, billNum.toInt, motionId)
         }
-      FileUtils.writeUsing("data/allVoteNames.txt") { f => voteNames.foreach(s => f.write(s + "\n")) }
+      //FileUtils.writeUsing("data/allVoteNames.txt") { f => voteNames.foreach(s => f.write(s + "\n")) }
 
       val usedVoteNames = voteNames.filter(voteName => sessionGroup.exists(voteName.session.startsWith))
 
@@ -82,7 +87,7 @@ object TeliconCsvPrep {
         "pctBachelorsDegree",
         "pctLivingInPoverty",
         "pctWhite")
-      FileUtils.using(new CSVWriter(new BufferedWriter(new FileWriter("data/clean/voting_data-%s.csv".format(sessionGroupSuffix))))) { f =>
+      FileUtils.using(new CSVWriter(new BufferedWriter(new FileWriter("data/clean/%s/voting_data-%s.csv".format(outputDir, sessionGroupSuffix))))) { f =>
         f.writeNext((("name" +: "member numbers and sessions" +: infoItems) ++ constituentItems ++ usedVoteNames.map(_.toString)).toArray)
         for (LegislatorInfo(name, sessionsByMemnum, info, votes, constituentInfo) <- legislators.toVector.sortBy(leg => (leg.lastName, leg.name))) {
           val sessions = sessionsByMemnum.map { case (k, v) => "%s -> [%s]".format(k, v.toVector.sorted.mkString(",")) }.mkString(", ")
