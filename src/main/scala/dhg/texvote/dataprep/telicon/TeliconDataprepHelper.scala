@@ -1,4 +1,4 @@
-package dhg.texvote.dataprep
+package dhg.texvote.dataprep.telicon
 
 import opennlp.scalabha.util.CollectionUtil._
 import opennlp.scalabha.util.CollectionUtils._
@@ -9,156 +9,22 @@ import au.com.bytecode.opencsv.CSVWriter
 import java.io.BufferedWriter
 import java.io.FileWriter
 
-object TeliconCsvPrep {
+object TeliconDataprepHelper {
 
-  val legislatorDir = "data/scraped/legislator_pages/"
-  val votesDir = "data/scraped/votes_pages/"
+  val LegislatorDir = "data/scraped/legislator_pages/"
+  val VotesDir = "data/scraped/votes_pages/"
+  val PopulationDir = "data/scraped/population_pages/"
+  val EduEmployDir = "data/scraped/edu_employ_pages/"
+  val IncomeHousingDir = "data/scraped/income_housing_pages/"
 
-  val FilenameRe = """(\d{3})_(\d\d.)\.txt""".r
-  val NameRe = """(.+) \(([A-Z])\)""".r
+  val FilenameRe = """(\d{3})_(\d\d.)\.(xml|txt)""".r
 
   val NoneString = "-NONE-"
 
-  def main(args: Array[String]) {
-
-    def getMemnumSessions(dirname: String) =
-      new File(legislatorDir).listFiles.map(_.getName).collect { case FilenameRe(memnum, session) => (memnum, session) }.toSet.unzip
-
-    val (allMemnums, allSessions) = getMemnumSessions(legislatorDir)
-    val (checkMemnums, checkSessions) = getMemnumSessions(votesDir); assert(allMemnums.toSet == checkMemnums.toSet); assert(allSessions.toSet == checkSessions.toSet)
-
-    def findInfo(name: String, page: Vector[String]) =
-      page.find(_.startsWith(name)).map(_.drop(name.size + 1).trim)
-
-    val data =
-      for (memnum <- allMemnums; session <- allSessions) yield {
-
-        //        val memnum = "41"
-        //        val session = "74R"
-
-        // println("%s %s".format(memnum, session))
-
-        val legislatorPage = getLegislatorPage(memnum, session)
-
-        //legislatorPage.zipWithIndex.foreach { case (l, i) => println(i + " " + l) }
-
-        legislatorPage(0) match {
-          case "Member Information" =>
-            val (chamber, shift) = legislatorPage(3) match { case "House of" => ("House", 0); case "Senate" => ("Senate", -1) }
-            val NameRe(name, party) = legislatorPage(6 + shift)
-
-            val votes = getVotesPage(memnum, session)
-
-            Some(
-              memnum,
-              session,
-              normalizeName(name),
-              Map(
-                "party" -> Some(party),
-                "chamber" -> Some(chamber),
-                "dob" -> findInfo("Date of Birth", legislatorPage).map(normalizeDate),
-                "degrees" -> findInfo("Degrees", legislatorPage),
-                "church" -> findInfo("Church Affiliation", legislatorPage)),
-              votes)
-
-          case "Unknown Member" => None
-        }
-      }
-
-    //data.flatten.map(_._3).groupBy(n => getLastName(n)).mapVals(_.toSet).toVector.sortBy(_._1).filter { case (k, vs) => vs.size > 1 } foreach println
-
-    val byName = data.flatten
-      .groupBy(_._3)
-      .mapVals { entries =>
-        val allInfo = entries.map(_._4)
-        val sessionsByMemnum = entries.map { case (memnum, session, _, _, _) => (memnum, session) }.groupByKey
-        val info = allInfo.flatMap(_.keys).mapTo(k => allInfo.map(_(k))).toMap
-        val votes = entries.map(_._5).flatten.ungroup.map { case (bill, (motion, vote)) => (bill + " - " + motion, vote) }.toMap
-        (sessionsByMemnum, info, votes)
-      }
-
-    val BillNameSortCriteriaRe = """(.{3}) - (.{2}.?) (\d+)\t.* - (.+)\t.*""".r
-    val voteNames = byName.flatMap(_._2._3.keys).toSet.toVector.sortBy {
-      case BillNameSortCriteriaRe(session, billType, billNum, motionId) =>
-        (session.replace('R', '0'), billType, billNum.toInt, motionId)
-    }
-    //FileUtils.writeUsing("data/allVoteNames.txt") { f => voteNames.foreach(s => f.write(s + "\n")) }
-
-    //val groupedSessions = List(("allSessions", allSessions)) // all sessions in one CSV
-    //val groupedSessions = allSessions.groupBy(_.take(2)) // each session, by first two digits, in its own CSV
-    val groupedSessions = allSessions.groupBy(identity) // each session ID in its own CSV
-
-    for ((sessionGroupSuffix, sessionGroup) <- groupedSessions) {
-      val usedVoteNames = voteNames.filter(voteName => sessionGroup.exists(voteName.startsWith))
-
-      val infoItems = Vector("party", "chamber", "dob", "degrees", "church")
-      FileUtils.using(new CSVWriter(new BufferedWriter(new FileWriter("data/clean/voting_data-%s.csv".format(sessionGroupSuffix))))) { f =>
-        f.writeNext((("name" +: "member numbers and sessions" +: infoItems) ++ usedVoteNames).toArray)
-        for ((name, (sessionsByMemnum, info, votes)) <- byName.toVector.sortBy(n => (getLastName(n._1), n._1))) {
-          val sessions = sessionsByMemnum.map { case (k, v) => "%s -> [%s]".format(k, v.toVector.sorted.mkString(",")) }.mkString(", ")
-          val items = infoItems.map(item => info(item).toVector.sorted.map(_.getOrElse("-None-")).mkString("; "))
-          val voteItems = usedVoteNames.map(votes.getOrElse(_, ""))
-          f.writeNext(((name +: sessions +: items) ++ voteItems).toArray)
-        }
-      }
-    }
-  }
-
-  def getLegislatorPage(memnum: String, session: String) = {
-    val page = readLines(legislatorDir + "%03d_%s.txt".format(memnum.toInt, session), "latin1").map(_.trim).toVector
-
-    val x1 =
-      if (memnum.toInt == 41 && session == "74R" && page(3) == "41") {
-        val newpart = Vector("House of", "Representatives", "District 41")
-        page.take(3) ++ newpart ++ page.drop(4)
-      }
-      else if (memnum.toInt == 63 && session == "73R" && page(3) == "2") {
-        val newpart = Vector("House of", "Representatives", "District 2")
-        page.take(3) ++ newpart ++ page.drop(4)
-      }
-      else page
-
-    x1
-  }
-
-  /**
-   * @return Map[BillName, Map[MotionName, Vote]]
-   */
-  def getVotesPage(memnum: String, session: String) = {
-    val BillLineRe = """  ((HB|SB|HR|SR|HCR|SCR|HJR|SJR) \d+\t.*)""".r
-    val VoteLineRe = """ \t([YNAEPCX])\t[YN]\t\d\d/\d\d/\d\d\t(.+)""".r
-
-    val page = readLines(votesDir + "%03d_%s.txt".format(memnum.toInt, session)).toVector
-
-    if (page(0) == "Invalid Parameters")
-      Map[String, Map[String, String]]()
-
-    else {
-      val headerLines = page.indexOf(" \tVote	Maj	Date	Number	Vote Description") + 1
-      assert(page.size > 12, "In [%s %s]".format(memnum, session))
-      assert(page(page.length - 12) == " \t Votes 	 	 Percent \t ", page(page.length - 12))
-
-      page.drop(headerLines).dropRight(12).foldLeft(
-        List[(String, Map[String, String])]()) {
-          case (((curBill, votes) :: z), line) =>
-            line match {
-              case BillLineRe(bill, _) =>
-                (session + " - " + bill, Map[String, String]()) :: (curBill, votes) :: z
-              case VoteLineRe(vote, motion) =>
-                (curBill, votes.updated(motion, vote)) :: z
-            }
-          case (Nil, BillLineRe(bill, _)) =>
-            (session + " - " + bill, Map[String, String]()) :: Nil
-        }.toMap
-    }
-  }
-
-  def getLastName(name: String): String = {
-    val x0 = if (name.endsWith(".")) name.dropRight(1) else name
-    val x1 = if (x0.toLowerCase.endsWith(" jr")) x0.dropRight(3) else x0
-    val x2 = if (x1.toLowerCase.endsWith(" iii")) x1.dropRight(3) else x1
-    val x3 = if (x2.endsWith(",")) x2.dropRight(1) else x2
-    x3.split(" ").last
+  def getMemnumSessions(dirname: String, filetype: String) = {
+    new File(dirname).listFiles.map(_.getName).collect {
+      case FilenameRe(memnum, session, `filetype`) => (memnum, session)
+    }.toSet.unzip
   }
 
   def normalizeName(name: String) = {
