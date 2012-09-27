@@ -31,12 +31,12 @@ object TeliconConstituentPagesPrep {
   //
   //		% white
 
-  val PctRe = """(\d?\d\.\d)%""".r
-  def findInfo(name: String, page: Vector[String]) = {
+  val PctRe = """(\d?\d\.\d)%?""".r
+  def findInfo(name: String, page: Vector[String], col: Int) = {
     page.map(_.trim)
       .find(_.startsWith(name))
       .map { line =>
-        val PctRe(v) = line.drop(name.size).trim.split("\\s+")(1)
+        val PctRe(v) = line.drop(name.size).trim.split("\\s+")(col)
         v
       }
   }
@@ -45,16 +45,19 @@ object TeliconConstituentPagesPrep {
     val session = "82R"
 
     val populationPage = readLines(PopulationDir + "%03d_%s.xml".format(memnum.toInt, session)).toVector
-    val Some(pctForeignBorn) = findInfo("FOREIGN BORN", populationPage)
-    val Some(pctNoncitizen) = findInfo("NONCITIZEN", populationPage)
-    val Some(pctRural) = findInfo("RURAL POPULATION", populationPage)
-    val Some(pctSingleParentFamilies) = findInfo("SINGLE-PARENT FAMILIES", populationPage)
+    val Some(pctForeignBorn) = findInfo("FOREIGN BORN", populationPage, 1)
+    val Some(pctNoncitizen) = findInfo("NONCITIZEN", populationPage, 1)
+    val Some(pctRural) = findInfo("RURAL POPULATION", populationPage, 1)
+    val Some(pctSingleParentFamilies) = findInfo("SINGLE-PARENT FAMILIES", populationPage, 1)
 
     val eduEmployPage = readLines(EduEmployDir + "%03d_%s.xml".format(memnum.toInt, session)).toVector
-    val Some(pctBachelorsDegree) = findInfo("BACHELOR'S DEGREE OR HIGHER (Age 25+)", eduEmployPage)
+    val Some(pctBachelorsDegree) = findInfo("BACHELOR'S DEGREE OR HIGHER (Age 25+)", eduEmployPage, 1)
 
     val incomeHousingPage = readLines(IncomeHousingDir + "%03d_%s.xml".format(memnum.toInt, session)).toVector
-    val Some(pctLivingInPoverty) = findInfo("POPULATION LIVING IN POVERTY", incomeHousingPage)
+    val Some(pctLivingInPoverty) = findInfo("POPULATION LIVING IN POVERTY", incomeHousingPage, 1)
+
+    val raceDemoPage = readLines(RaceDemoDir + "%03d_%s.txt".format(memnum.toInt, session)).toVector
+    val Some(pctWhite) = findInfo("DISTRICT %s Total:".format(memnum.toInt % 150), raceDemoPage, 6)
 
     Map(
       "pctForeignBorn" -> pctForeignBorn,
@@ -62,7 +65,8 @@ object TeliconConstituentPagesPrep {
       "pctRural" -> pctRural,
       "pctSingleParentFamilies" -> pctSingleParentFamilies,
       "pctBachelorsDegree" -> pctBachelorsDegree,
-      "pctLivingInPoverty" -> pctLivingInPoverty)
+      "pctLivingInPoverty" -> pctLivingInPoverty,
+      "pctWhite" -> pctWhite)
   }
 
 }

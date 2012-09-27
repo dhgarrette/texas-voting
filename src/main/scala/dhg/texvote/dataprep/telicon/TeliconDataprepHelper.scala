@@ -16,6 +16,7 @@ object TeliconDataprepHelper {
   val PopulationDir = "data/scraped/population_pages/"
   val EduEmployDir = "data/scraped/edu_employ_pages/"
   val IncomeHousingDir = "data/scraped/income_housing_pages/"
+  val RaceDemoDir = "data/scraped/race_demo_pages/"
 
   val FilenameRe = """(\d{3})_(\d\d.)\.(xml|txt)""".r
 

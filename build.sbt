@@ -9,7 +9,8 @@ resolvers ++= Seq(
 
 
 libraryDependencies ++= Seq(
-  "net.sourceforge.htmlunit" % "htmlunit" % "2.10")
+  "net.sourceforge.htmlunit" % "htmlunit" % "2.10",
+  "org.apache.pdfbox" % "pdfbox" % "1.7.1")
 
 mainClass in (Compile, run) := None
 

@@ -17,6 +17,7 @@ import java.io.FileOutputStream
 import org.apache.pdfbox.util.PDFTextStripper
 import org.apache.pdfbox.pdmodel.PDDocument
 import java.io.InputStream
+import dhg.texvote.dataprep.telicon.TeliconDataprepHelper._
 
 /**
  * www.telicon.com
@@ -58,13 +59,6 @@ object TeliconScraper {
       args.toSeq match {
         case Seq(username, password) => (username, password)
       }
-
-    val LegislatorDir = "data/scraped/legislator_pages/"
-    val VotesDir = "data/scraped/votes_pages/"
-    val PopulationDir = "data/scraped/population_pages/"
-    val EduEmployDir = "data/scraped/edu_employ_pages/"
-    val IncomeHousingDir = "data/scraped/income_housing_pages/"
-    val RaceDemoDir = "data/scraped/race_demo_pages/"
 
     makeDir("data")
     makeDir("data/scraped")

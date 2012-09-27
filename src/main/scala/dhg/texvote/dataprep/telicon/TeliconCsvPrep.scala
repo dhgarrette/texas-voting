@@ -14,17 +14,6 @@ import dhg.texvote.dataprep.telicon.TeliconConstituentPagesPrep._
 
 object TeliconCsvPrep {
 
-  val LegislatorDir = "data/scraped/legislator_pages/"
-  val VotesDir = "data/scraped/votes_pages/"
-  val PopulationDir = "data/scraped/population_pages/"
-  val EduEmployDir = "data/scraped/edu_employ_pages/"
-  val IncomeHousingDir = "data/scraped/income_housing_pages/"
-
-  val FilenameRe = """(\d{3})_(\d\d.)\.txt""".r
-  val NameRe = """(.+) \(([A-Z])\)""".r
-
-  val NoneString = "-NONE-"
-
   def main(args: Array[String]) {
 
     val (allMemnums, allSessions) = getMemnumSessions(LegislatorDir, "txt")
@@ -82,7 +71,8 @@ object TeliconCsvPrep {
         "pctRural",
         "pctSingleParentFamilies",
         "pctBachelorsDegree",
-        "pctLivingInPoverty")
+        "pctLivingInPoverty",
+        "pctWhite")
       FileUtils.using(new CSVWriter(new BufferedWriter(new FileWriter("data/clean/voting_data-%s.csv".format(sessionGroupSuffix))))) { f =>
         f.writeNext((("name" +: "member numbers and sessions" +: infoItems) ++ constituentItems ++ usedVoteNames.map(_.toString)).toArray)
         for (LegislatorInfo(name, sessionsByMemnum, info, votes, constituentInfo) <- legislators.toVector.sortBy(leg => (leg.lastName, leg.name))) {
