@@ -44,19 +44,19 @@ object TeliconConstituentPagesPrep {
   def getConstitutentPages(memnum: String): Map[String, String] = {
     val session = "82R"
 
-    val populationPage = readLines(PopulationDir + "%03d_%s.xml".format(memnum.toInt, session)).toVector
+    val populationPage = readLines(PopulationDir + "%03d_%s.xml".format(memnum.toInt, session), "latin1").toVector
     val Some(pctForeignBorn) = findInfo("FOREIGN BORN", populationPage, 1)
     val Some(pctNoncitizen) = findInfo("NONCITIZEN", populationPage, 1)
     val Some(pctRural) = findInfo("RURAL POPULATION", populationPage, 1)
     val Some(pctSingleParentFamilies) = findInfo("SINGLE-PARENT FAMILIES", populationPage, 1)
 
-    val eduEmployPage = readLines(EduEmployDir + "%03d_%s.xml".format(memnum.toInt, session)).toVector
+    val eduEmployPage = readLines(EduEmployDir + "%03d_%s.xml".format(memnum.toInt, session), "latin1").toVector
     val Some(pctBachelorsDegree) = findInfo("BACHELOR'S DEGREE OR HIGHER (Age 25+)", eduEmployPage, 1)
 
-    val incomeHousingPage = readLines(IncomeHousingDir + "%03d_%s.xml".format(memnum.toInt, session)).toVector
+    val incomeHousingPage = readLines(IncomeHousingDir + "%03d_%s.xml".format(memnum.toInt, session), "latin1").toVector
     val Some(pctLivingInPoverty) = findInfo("POPULATION LIVING IN POVERTY", incomeHousingPage, 1)
 
-    val raceDemoPage = readLines(RaceDemoDir + "%03d_%s.txt".format(memnum.toInt, session)).toVector
+    val raceDemoPage = readLines(RaceDemoDir + "%03d_%s.txt".format(memnum.toInt, session), "latin1").toVector
     val Some(pctWhite) = findInfo("DISTRICT %s Total:".format(memnum.toInt % 150), raceDemoPage, 6)
 
     Map(

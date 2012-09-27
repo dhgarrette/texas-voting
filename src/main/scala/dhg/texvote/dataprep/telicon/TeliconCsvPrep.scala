@@ -12,6 +12,9 @@ import dhg.texvote.dataprep.telicon.TeliconDataprepHelper._
 import dhg.texvote.dataprep.telicon.TeliconVotesPagePrep._
 import dhg.texvote.dataprep.telicon.TeliconConstituentPagesPrep._
 
+/**
+ * sbt "run-main dhg.texvote.dataprep.telicon.TeliconCsvPrep"
+ */
 object TeliconCsvPrep {
 
   def main(args: Array[String]) {
