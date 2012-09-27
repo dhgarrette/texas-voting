@@ -57,7 +57,7 @@ object TeliconConstituentPagesPrep {
     val Some(pctLivingInPoverty) = findInfo("POPULATION LIVING IN POVERTY", incomeHousingPage, 1)
 
     val raceDemoPage = readLines(RaceDemoDir + "%03d_%s.txt".format(memnum.toInt, session), "latin1").toVector
-    val Some(pctWhite) = findInfo("DISTRICT %s Total:".format(memnum.toInt % 150), raceDemoPage, 6)
+    val Some(pctWhite) = findInfo("DISTRICT %s Total:".format((memnum.toInt - 1) % 150 + 1), raceDemoPage, 6)
 
     Map(
       "pctForeignBorn" -> pctForeignBorn,
