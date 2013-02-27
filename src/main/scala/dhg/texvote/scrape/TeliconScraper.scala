@@ -2,12 +2,8 @@ package dhg.texvote.scrape
 
 import com.gargoylesoftware.htmlunit.WebClient
 import com.gargoylesoftware.htmlunit.html._
-import opennlp.scalabha.util.CollectionUtil._
-import opennlp.scalabha.util.CollectionUtils._
-import opennlp.scalabha.util.FileUtils._
-import java.io.File
-import org.apache.log4j.Logger
-import org.apache.log4j.Level
+import dhg.util.CollectionUtil._
+import dhg.util.FileUtil._
 import com.gargoylesoftware.htmlunit.attachment.Attachment
 import com.gargoylesoftware.htmlunit.attachment.CollectingAttachmentHandler
 import scala.collection.JavaConverters._
@@ -53,8 +49,6 @@ object TeliconScraper {
   val allMemnums = (1 to 181) // 150 House districts and 31 Senate districts
 
   def main(args: Array[String]) {
-    Logger.getRootLogger.setLevel(Level.INFO)
-
     val (username, password) =
       args.toSeq match {
         case Seq(username, password) => (username, password)
@@ -78,10 +72,10 @@ object TeliconScraper {
       memnumGroup.foreach { memnum =>
         allSessions.foreach { session =>
           val legislatorPage: HtmlPage = webClient.getPage("http://www.telicon.com/htbin/web_member.com?Memnum=%s&Session=%s".format(memnum, session))
-          writeUsing(LegislatorDir + "%03d_%s.txt".format(memnum, session))(_.write(legislatorPage.asText))
+          writeUsing(File(LegislatorDir + "%03d_%s.txt".format(memnum, session)))(_.write(legislatorPage.asText))
 
           val votesPage: HtmlPage = webClient.getPage("http://www.telicon.com/htbin/web_memvot.com?mvses=%s&mvmem=TX%s&X5=ALL&XD=&XL=N".format(session, memnum))
-          writeUsing(VotesDir + "%03d_%s.txt".format(memnum, session))(_.write(votesPage.asText))
+          writeUsing(File(VotesDir + "%03d_%s.txt".format(memnum, session)))(_.write(votesPage.asText))
 
           if (session == "82R") { // the only session working now
             val Seq(populationPage, eduEmployPage, incomeHousingPage) = (1 to 3).map { page =>
@@ -89,9 +83,9 @@ object TeliconScraper {
               val url = "http://www.fyi.legis.state.tx.us/fyiwebdocs/HTML/%s/dist%s/r%s.htm".format(chamber, dist, page)
               anonClient.getPage(url): HtmlPage
             }
-            writeUsing(PopulationDir + "%03d_%s.xml".format(memnum, session))(_.write(populationPage.asXml))
-            writeUsing(EduEmployDir + "%03d_%s.xml".format(memnum, session))(_.write(eduEmployPage.asXml))
-            writeUsing(IncomeHousingDir + "%03d_%s.xml".format(memnum, session))(_.write(incomeHousingPage.asXml))
+            writeUsing(File(PopulationDir + "%03d_%s.xml".format(memnum, session)))(_.write(populationPage.asXml))
+            writeUsing(File(EduEmployDir + "%03d_%s.xml".format(memnum, session)))(_.write(eduEmployPage.asXml))
+            writeUsing(File(IncomeHousingDir + "%03d_%s.xml".format(memnum, session)))(_.write(incomeHousingPage.asXml))
           }
 
           if (session == "82R") { // the only session working now
@@ -102,7 +96,7 @@ object TeliconScraper {
               val doc = PDDocument.load(p.getWebResponse().getContentAsStream())
               try {
                 val stripper = new PDFTextStripper()
-                writeUsing(RaceDemoDir + "%03d_%s.txt".format(memnum, session)) { w => stripper.writeText(doc, w) }
+                writeUsing(File(RaceDemoDir + "%03d_%s.txt".format(memnum, session))) { w => stripper.writeText(doc, w) }
               }
               finally {
                 doc.close()

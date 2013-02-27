@@ -1,10 +1,8 @@
 package dhg.texvote.dataprep.telicon
 
-import opennlp.scalabha.util.CollectionUtil._
-import opennlp.scalabha.util.CollectionUtils._
-import opennlp.scalabha.util.FileUtils
-import opennlp.scalabha.util.FileUtils._
-import java.io.File
+import dhg.util.CollectionUtil._
+import dhg.util.FileUtil
+import dhg.util.FileUtil._
 import au.com.bytecode.opencsv.CSVWriter
 import java.io.BufferedWriter
 import java.io.FileWriter
@@ -23,7 +21,7 @@ object TeliconVotesPagePrep {
     val BillLineRe = """  ((HB|SB|HR|SR|HCR|SCR|HJR|SJR) \d+\t.*)""".r
     val VoteLineRe = """ \t([YNAEPCX])\t[YN]\t\d\d/\d\d/\d\d\t(.+)""".r
 
-    val page = readLines(VotesDir + "%03d_%s.txt".format(memnum.toInt, session)).toVector
+    val page = File(VotesDir + "%03d_%s.txt".format(memnum.toInt, session)).readLines.toVector
 
     if (page(0) == "Invalid Parameters")
       Map.empty

@@ -1,10 +1,8 @@
 package dhg.texvote.dataprep.telicon
 
-import opennlp.scalabha.util.CollectionUtil._
-import opennlp.scalabha.util.CollectionUtils._
-import opennlp.scalabha.util.FileUtils
-import opennlp.scalabha.util.FileUtils._
-import java.io.File
+import dhg.util.CollectionUtil._
+import dhg.util.FileUtil
+import dhg.util.FileUtil._
 import au.com.bytecode.opencsv.CSVWriter
 import java.io.BufferedWriter
 import java.io.FileWriter
@@ -49,7 +47,7 @@ object TeliconLegislatorPagePrep {
   }
 
   def getPageLines(memnum: String, session: String) = {
-    val page = readLines(LegislatorDir + "%03d_%s.txt".format(memnum.toInt, session), "latin1").map(_.trim).toVector
+    val page = File(LegislatorDir + "%03d_%s.txt".format(memnum.toInt, session), "latin1").readLines.map(_.trim).toVector
 
     val x1 =
       if (memnum.toInt == 41 && session == "74R" && page(3) == "41") {

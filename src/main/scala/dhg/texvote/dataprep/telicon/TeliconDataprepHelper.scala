@@ -1,9 +1,8 @@
 package dhg.texvote.dataprep.telicon
 
-import opennlp.scalabha.util.CollectionUtil._
-import opennlp.scalabha.util.CollectionUtils._
-import opennlp.scalabha.util.FileUtils
-import opennlp.scalabha.util.FileUtils._
+import dhg.util.CollectionUtil._
+import dhg.util.FileUtil
+import dhg.util.FileUtil._
 import java.io.File
 import au.com.bytecode.opencsv.CSVWriter
 import java.io.BufferedWriter

@@ -9,6 +9,7 @@ resolvers ++= Seq(
 
 
 libraryDependencies ++= Seq(
+  "net.sf.opencsv" % "opencsv" % "2.0",
   "net.sourceforge.htmlunit" % "htmlunit" % "2.10",
   "org.apache.pdfbox" % "pdfbox" % "1.7.1")
 

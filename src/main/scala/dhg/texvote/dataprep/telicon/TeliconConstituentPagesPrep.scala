@@ -1,10 +1,8 @@
 package dhg.texvote.dataprep.telicon
 
-import opennlp.scalabha.util.CollectionUtil._
-import opennlp.scalabha.util.CollectionUtils._
-import opennlp.scalabha.util.FileUtils
-import opennlp.scalabha.util.FileUtils._
-import java.io.File
+import dhg.util.CollectionUtil._
+import dhg.util.FileUtil
+import dhg.util.FileUtil._
 import au.com.bytecode.opencsv.CSVWriter
 import java.io.BufferedWriter
 import java.io.FileWriter
@@ -46,19 +44,19 @@ object TeliconConstituentPagesPrep {
 
     val xmlColumn = if (session.take(2).toInt >= 78) 1 else 4
 
-    val populationPage = readLines(PopulationDir + "%03d_%s.xml".format(memnum.toInt, fileSession), "latin1").toVector
+    val populationPage = File(PopulationDir + "%03d_%s.xml".format(memnum.toInt, fileSession), "latin1").readLines.toVector
     val Some(pctForeignBorn) = findInfo("FOREIGN BORN", populationPage, xmlColumn)
     val Some(pctNoncitizen) = findInfo("NONCITIZEN", populationPage, xmlColumn)
     val Some(pctRural) = findInfo("RURAL POPULATION", populationPage, xmlColumn)
     val Some(pctSingleParentFamilies) = findInfo("SINGLE-PARENT FAMILIES", populationPage, xmlColumn)
 
-    val eduEmployPage = readLines(EduEmployDir + "%03d_%s.xml".format(memnum.toInt, fileSession), "latin1").toVector
+    val eduEmployPage = File(EduEmployDir + "%03d_%s.xml".format(memnum.toInt, fileSession), "latin1").readLines.toVector
     val Some(pctBachelorsDegree) = findInfo("BACHELOR'S DEGREE OR HIGHER (Age 25+)", eduEmployPage, xmlColumn)
 
-    val incomeHousingPage = readLines(IncomeHousingDir + "%03d_%s.xml".format(memnum.toInt, fileSession), "latin1").toVector
+    val incomeHousingPage = File(IncomeHousingDir + "%03d_%s.xml".format(memnum.toInt, fileSession), "latin1").readLines.toVector
     val Some(pctLivingInPoverty) = findInfo("POPULATION LIVING IN POVERTY", incomeHousingPage, xmlColumn)
 
-    val raceDemoPage = readLines(RaceDemoDir + "%03d_%s.txt".format(memnum.toInt, fileSession), "latin1").toVector
+    val raceDemoPage = File(RaceDemoDir + "%03d_%s.txt".format(memnum.toInt, fileSession), "latin1").readLines.toVector
     val Some(pctWhite) = findInfo("DISTRICT %s Total:".format((memnum.toInt - 1) % 150 + 1), raceDemoPage, 6)
 
     Map(

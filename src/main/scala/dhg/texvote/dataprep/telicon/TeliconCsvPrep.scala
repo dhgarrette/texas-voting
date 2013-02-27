@@ -1,9 +1,9 @@
 package dhg.texvote.dataprep.telicon
 
-import opennlp.scalabha.util.CollectionUtil._
-import opennlp.scalabha.util.CollectionUtils._
-import opennlp.scalabha.util.FileUtils
-import opennlp.scalabha.util.FileUtils._
+import dhg.util.CollectionUtil._
+import dhg.util.Arm._
+import dhg.util.FileUtil
+import dhg.util.FileUtil._
 import java.io.File
 import au.com.bytecode.opencsv.CSVWriter
 import java.io.BufferedWriter
@@ -70,11 +70,11 @@ object TeliconCsvPrep {
       val BillRe = """(.{2}.?) (\d+)\t.*""".r
       val MotionRe = """(.+)\t.*""".r
       val voteNames =
-        legislators.flatMap(_.votes.map(_._1)).toSet.toVector.sortBy {
+        legislators.flatMap(_.votes.map(_._1)).toVector.distinct.sortBy {
           case VoteName(session, BillRe(billType, billNum), MotionRe(motionId)) =>
             (session.replace('R', '0'), billType, billNum.toInt, motionId)
         }
-      //FileUtils.writeUsing("data/allVoteNames.txt") { f => voteNames.foreach(s => f.write(s + "\n")) }
+      //FileUtil.writeUsing("data/allVoteNames.txt") { f => voteNames.foreach(s => f.write(s + "\n")) }
 
       val usedVoteNames = voteNames.filter(voteName => sessionGroup.exists(voteName.session.startsWith))
 
@@ -87,7 +87,7 @@ object TeliconCsvPrep {
         "pctBachelorsDegree",
         "pctLivingInPoverty",
         "pctWhite")
-      FileUtils.using(new CSVWriter(new BufferedWriter(new FileWriter("data/clean/%s/voting_data-%s.csv".format(outputDir, sessionGroupSuffix))))) { f =>
+      using(new CSVWriter(new BufferedWriter(new FileWriter("data/clean/%s/voting_data-%s.csv".format(outputDir, sessionGroupSuffix))))) { f =>
         f.writeNext((("name" +: "member numbers and sessions" +: infoItems) ++ constituentItems ++ usedVoteNames.map(_.toString)).toArray)
         for (LegislatorInfo(name, sessionsByMemnum, info, votes, constituentInfo) <- legislators.toVector.sortBy(leg => (leg.lastName, leg.name))) {
           val sessions = sessionsByMemnum.map { case (k, v) => "%s -> [%s]".format(k, v.toVector.sorted.mkString(",")) }.mkString(", ")
